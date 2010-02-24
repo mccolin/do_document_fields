@@ -1,0 +1,8 @@
+= Do Document Fields
+Add document-style field blobs to any ActiveRecord object. Keep the ActiveRecord and SQL you want for associations, and toss the bulk of data into an on-object document
+
+
+
+= COPYRIGHT
+Copyright 2010 Colin McCloskey (http://mccolin.com/), but, hell, you can use it as you please ;-)
+
