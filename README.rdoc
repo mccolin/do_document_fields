@@ -2,6 +2,36 @@
 Add document-style field blobs to any ActiveRecord object. Keep the ActiveRecord and SQL you want for associations, and toss the bulk of data into an on-object document
 
 
+= Example
+
+To add document_fields to your ActiveRecord object, first add a text column to your class' backing table that will hold your document content. By default, do_document_fields will expect this column to be named "document", but you can override that easily.
+
+Once you've migrated that change into your model, here's a sample of hold to add document-style blob fields to your object:
+
+	class ObjectWithBlob < ActiveRecord::Base
+ 
+	  # Declare that we are using document blobs in a particular column of this object:
+	  do_document_fields
+	
+		# If we wanted to change the name of the field we use for documents, we'd do this:
+		# do_document_fields :something_other_than_document
+ 
+		# Declare the columns we are adding to our document:
+	  document_field :name, String
+	  document_field :phone, String
+		document_field :age, Integer
+
+		# Declare the document fields you'd like to track with indexes:
+	  document_index :name
+ 
+	end
+
+
+Now, you can add and remove new fields to this object within the document as simply as adding or removing declarations of "document_field".
+
+It's that simple. Except for the fact that indexes aren't yet implemented ;-)
+
+
 
 = COPYRIGHT
 Copyright 2010 Colin McCloskey (http://mccolin.com/), but, hell, you can use it as you please ;-)
