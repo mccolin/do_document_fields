@@ -91,12 +91,20 @@ module Awexome
           # TODO: Add after_save callback to update index
           define_method("update_document_index_#{field_name}_after_save") do
             puts "DOCUMENT_FIELDS:  update_document_index_after_save invoked for \"#{field_name}\"; not yet implemented"
+            class_name = self.class.name.underscore
+            class_table_name = self.class.table_name
+            index_table_name = "document_indexes_for_#{class_table_name}"
+            idx_id = ActiveRecord::Base.connection.insert("INSERT INTO `#{index_table_name}` (`doc_id`,`field`,`value`) VALUES ("+self.id.to_s+", \""+field_name.to_s+"\", \"#{self.send(field_name).to_s}\")")            
           end
           after_save "update_document_index_#{field_name}_after_save"
           
           # TODO: Add after_destroy callback to update index
           define_method("update_document_index_#{field_name}_after_destroy") do
             puts "DOCUMENT_FIELDS:  update_document_index_after_destroy invoked for \"#{field_name}\"; not yet implemented"
+            class_name = self.class.name.underscore
+            class_table_name = self.class.table_name
+            index_table_name = "document_indexes_for_#{class_table_name}"
+            num_del = conn.delete("DELETE FROM `#{index_table_name}` WHERE `doc_id` = #{self.id}")
           end
           after_destroy "update_document_index_#{field_name}_after_destroy"
           
