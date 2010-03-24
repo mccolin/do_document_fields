@@ -94,7 +94,7 @@ module Awexome
             class_name = self.class.name.underscore
             class_table_name = self.class.table_name
             index_table_name = "document_indexes_for_#{class_table_name}"
-            idx_id = ActiveRecord::Base.connection.insert("INSERT INTO `#{index_table_name}` (`doc_id`,`field`,`value`) VALUES ("+self.id.to_s+", \""+field_name.to_s+"\", \"#{self.send(field_name).to_s}\")")            
+            idx_id = ActiveRecord::Base.connection.insert("INSERT INTO `#{index_table_name}` (`doc_id`,`field`,`value`) VALUES ("+self.id.to_s+", \""+field_name.to_s+"\", \"#{self.send(field_name).to_s}\")")
           end
           after_save "update_document_index_#{field_name}_after_save"
           
