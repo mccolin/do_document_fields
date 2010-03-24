@@ -19,6 +19,7 @@ module Awexome
           class_eval <<-EOV
             include Awexome::Do::DocumentFields::InstanceMethods
             serialize :#{column_name}, Hash
+            attr_accessor :document_fields
             def document_column_name
               '#{column_name}'
             end
@@ -34,7 +35,6 @@ module Awexome
           puts "DOCUMENT_FIELDS:  document_field invoked for \"#{args.inspect}\""
           field_name = args.shift
           field_type = args.shift
-          
           class_eval <<-EOV
             def #{field_name}()
               document_body = self.send(document_column_name) || {}
