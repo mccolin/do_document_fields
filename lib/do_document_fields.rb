@@ -6,7 +6,13 @@ module Awexome
   module Do
     module DocumentFields
       
-      class NoFieldName < Exception; end
+      class NoFieldNameSpecified < Exception
+        def initialize(msg="A document field name must be provided to build a document_field"); super(msg); end
+      end
+      class NoFieldForThatIndex < Exception
+        def initialize(msg="A document field must exist before an index can be applied to it"); super(msg); end
+      end
+            
       
       def self.included(base)
         base.extend(ClassMethods)
@@ -38,7 +44,7 @@ module Awexome
         # * +field_type+ - second argument (optional) is the data type of the field
         def document_field(*args)
           field_name = args.shift
-          raise(NoFieldName, "A document field name must be provided to build a document_field") unless field_name
+          raise NoFieldNameSpecified unless field_name
           field_type = args.shift
           puts "DOCUMENT_FIELDS:  document_field invoked for \"#{field_name}\""
           self.send("document_fields").send("<<", field_name)
@@ -62,21 +68,22 @@ module Awexome
         # * +field_name+ - the name of the field for which to add an index
         def document_index(*args)
           field_name = args.shift
-          raise(NoFieldName, "A document field name must be provided to build a document_index") unless field_name
-          class_name = self.name.downcase
-          index_table_name = "index_#{field_name}_in_#{class_name}"
+          raise NoFieldNameSpecified unless field_name
+          raise NoFieldForThatIndex unless self.send("document_fields").include?(field_name)
+          class_name = self.name.underscore
+          class_table_name = self.table_name
+          index_table_name = "document_indexes_for_#{class_table_name}"
           puts "DOCUMENT_FIELDS:  document_index invoked for \"#{field_name}\" on #{class_name}"
           self.send("document_indexes").send("<<", field_name)
           
           instance_eval <<-EOS
             def find_by_#{field_name}(val)
-              #puts "DOCUMENT_FIELDS:  indexed finder invoked for \"#{field_name}\" on #{class_name}"
               find(
                 :all, 
                 :select=>"*",
                 :from=>"#{index_table_name}",
-                :conditions=>["`#{index_table_name}`.value = ?", val], 
-                :joins => "LEFT JOIN `#{class_name}s` ON `#{class_name}s`.id = `#{index_table_name}`.doc_id"
+                :conditions=>["`#{index_table_name}`.field = ? AND `#{index_table_name}`.value = ?", "#{field_name}", val], 
+                :joins => "LEFT JOIN `#{class_table_name}` ON `#{class_table_name}`.id = `#{index_table_name}`.doc_id"
               )
             end
           EOS
