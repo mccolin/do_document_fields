@@ -29,7 +29,21 @@ Once you've migrated that change into your model, here's a sample of hold to add
 
 Now, you can add and remove new fields to this object within the document as simply as adding or removing declarations of "document_field".
 
-It's that simple. Except for the fact that indexes aren't yet implemented ;-)
+
+Once you've added any indices to your model's fields, you'll want to be sure to build your supporting index tables. We use separate tables with database-level indexing to support indexed lookups of data in your document_field attributes. Build these tables by running this rake task:
+
+  rake db:migrate:document_indexes
+
+
+Now, you can use strictly-provided finders to find your objects by their document field attributes. Considering the model we described above, you can lookup by any *indexed* field like so:
+
+  obj = ObjectWithBlob.find_by_name("Charlie")
+  => #<ObjectWithBlob id: 412, document: {:name=>"Charlie", :phone=>"212-555-1234", :age=>34}, created_at: "2010-03-22 20:49:03", updated_at: "2010-03-22 20:49:03">
+
+Finders are only added to document fields that are indexed.
+
+
+It's simple.
 
 
 
