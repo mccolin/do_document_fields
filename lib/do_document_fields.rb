@@ -120,6 +120,20 @@ module Awexome
             def find_by_#{field_name}(val)
               find_by_#{column_name}_#{field_name}(val)
             end
+            
+            def find_with_#{column_name}(hash={})
+              conditions = Array.new
+              hash.each do |key, val|
+                conditions.add_condition(["`#{index_table_name}`.field = ? AND `#{index_table_name}`.value = ?", "#{search_field_name}", val])
+              end
+              find(
+                :all, 
+                :select=>"*", 
+                :from=>"#{index_table_name}", 
+                :conditions=>conditions,
+                :joins=>"LEFT JOIN `#{class_table_name}` ON `#{class_table_name}`.id = `#{index_table_name}`.doc_id"
+              )
+            end
           EOS
           
           # after_save callback to update index
