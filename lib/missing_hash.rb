@@ -6,7 +6,6 @@ module Awexome
     module MissingHash
       
       def method_missing(method, *args)
-        puts "Crackpipe method missing"
         unless method.to_s.scan(/=$/).empty?
           return self[method.to_s.gsub(/=$/,"").to_sym] = args.shift
         else 

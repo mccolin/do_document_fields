@@ -15,7 +15,8 @@ module Awexome
       class NoFieldForThatIndex < Exception
         def initialize(msg="A document field must exist before an index can be applied to it"); super(msg); end
       end
-            
+      
+      logger ||= RAILS_DEFAULT_LOGGER
       
       def self.included(base)
         base.extend(ClassMethods)
@@ -29,7 +30,7 @@ module Awexome
           extend ClassMethods
           include InstanceMethods
           column_name = args.shift || :document
-          puts "DOCUMENT_FIELDS:  do_document_fields turned on for #{self.name} in column #{column_name}"
+          logger.debug "DOCUMENT_FIELDS:  do_document_fields turned on for #{self.name} in column #{column_name}"
           serialize "#{column_name}".to_sym, Hash
           
           cattr_accessor :document_column_names
@@ -70,17 +71,17 @@ module Awexome
           column_name = args.shift; raise NoColumnNameSpecified unless column_name
           field_name = args.shift;  raise NoFieldNameSpecified unless field_name
           field_opts = args.shift || Hash.new
-          puts "DOCUMENT_FIELDS:  declare_document_field invoked for \"#{column_name}\" column with \"#{field_name}\" field"
+          logger.debug "DOCUMENT_FIELDS:  declare_document_field invoked for \"#{column_name}\" column with \"#{field_name}\" field"
           self.send("document_fields").send("<<", field_name)
           self.send("#{column_name}_fields").send("<<", field_name)
           
           define_method(field_name) do
-            puts "DOCUMENT_FIELDS:  accessor invoked for field:#{field_name} on column:#{column_name}"
+            logger.debug "DOCUMENT_FIELDS:  accessor invoked for field:#{field_name} on column:#{column_name}"
             document_body = self.send(column_name) || Hash.new
             document_body[field_name]
           end
           define_method("#{field_name}=") do |val|
-            puts "DOCUMENT_FIELDS:  updater invoked for field:#{field_name} on column:#{column_name}"
+            logger.debug "DOCUMENT_FIELDS:  updater invoked for field:#{field_name} on column:#{column_name}"
             document_body = self.send(column_name) || Hash.new
             document_body[field_name] = val
             self.send("#{column_name}=", document_body)
@@ -102,12 +103,12 @@ module Awexome
           class_name = self.name.underscore
           class_table_name = self.table_name
           index_table_name = "document_indexes_for_#{class_table_name}"
-          puts "DOCUMENT_FIELDS:  declare_document_index invoked for \"#{column_name}\" column with \"#{field_name}\" field on #{class_name}"
+          logger.debug "DOCUMENT_FIELDS:  declare_document_index invoked for \"#{column_name}\" column with \"#{field_name}\" field on #{class_name}"
           self.send("document_indexes").send("<<", field_name)
           self.send("#{column_name}_indexes").send("<<", field_name)
           
           instance_eval <<-EOS
-            def find_by_#{field_name}(val)
+            def find_by_#{column_name}_#{field_name}(val)
               find(
                 :all, 
                 :select=>"*",
@@ -116,11 +117,14 @@ module Awexome
                 :joins => "LEFT JOIN `#{class_table_name}` ON `#{class_table_name}`.id = `#{index_table_name}`.doc_id"
               )
             end
+            def find_by_#{field_name}(val)
+              find_by_#{column_name}_#{field_name}(val)
+            end
           EOS
           
           # after_save callback to update index
           define_method("update_document_index_#{column_name}_#{field_name}_after_save") do
-            puts "DOCUMENT_FIELDS:  update_document_index_after_save invoked for \"#{field_name}\"; not yet implemented"
+            logger.debug "DOCUMENT_FIELDS:  update_document_index_after_save invoked for \"#{field_name}\"; not yet updating"
             class_name = self.class.name.underscore
             class_table_name = self.class.table_name
             index_table_name = "document_indexes_for_#{class_table_name}"
@@ -131,11 +135,11 @@ module Awexome
           
           # after_destroy callback to update index
           define_method("update_document_index_#{column_name}_#{field_name}_after_destroy") do
-            puts "DOCUMENT_FIELDS:  update_document_index_after_destroy invoked for \"#{field_name}\"; not yet implemented"
+            logger.debug "DOCUMENT_FIELDS:  update_document_index_after_destroy invoked for \"#{field_name}\""
             class_name = self.class.name.underscore
             class_table_name = self.class.table_name
             index_table_name = "document_indexes_for_#{class_table_name}"
-            num_del = conn.delete("DELETE FROM `#{index_table_name}` WHERE `doc_id` = #{self.id}")
+            num_del = ActiveRecord::Base.connection.delete("DELETE FROM `#{index_table_name}` WHERE `doc_id` = #{self.id}")
           end
           after_destroy "update_document_index_#{column_name}_#{field_name}_after_destroy"
           
