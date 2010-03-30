@@ -6,6 +6,9 @@ module Awexome
   module Do
     module DocumentFields
       
+      class NoColumnNameSpecified < Exception
+        def initialize(msg="A document column name must be provided to build a document_field."); super(msg); end
+      end
       class NoFieldNameSpecified < Exception
         def initialize(msg="A document field name must be provided to build a document_field"); super(msg); end
       end
@@ -23,41 +26,54 @@ module Awexome
         # Class-level initializer
         # * +column+ - first argument specifies the column to use for document storage
         def do_document_fields(*args)
-          puts "DOCUMENT_FIELDS:  do_document_fields turned on for #{self.name}"
           extend ClassMethods
           include InstanceMethods
           column_name = args.shift || :document
+          puts "DOCUMENT_FIELDS:  do_document_fields turned on for #{self.name} in column #{column_name}"
           serialize "#{column_name}".to_sym, Hash
-          cattr_accessor :document_column_name
-          self.document_column_name = column_name.to_sym
+          
+          cattr_accessor :document_column_names
+          self.document_column_names ||= Array.new
+          self.document_column_names << column_name.to_sym
+          
           cattr_accessor :document_fields
           self.document_fields = Array.new
+          
           cattr_accessor :document_indexes
           self.document_indexes = Array.new
+          
+          instance_eval <<-EOS
+            def #{column_name}_field(*args)
+              self.declare_document_field(*args.unshift(:#{column_name}))
+            end
+          EOS
+          
         end
         
         
         # Attribute declaration. Use this method to declare fields that are stored within
         # the document store for objects of this type. Accessors will be created for the field
         # that manipulate the document store instead of a full-fledged column.
-        # * +field_name+ - first argument is the name of the field
-        # * +field_type+ - second argument (optional) is the data type of the field
-        def document_field(*args)
-          field_name = args.shift
-          raise NoFieldNameSpecified unless field_name
-          field_type = args.shift
-          puts "DOCUMENT_FIELDS:  document_field invoked for \"#{field_name}\""
+        # * +column_name+ - first argument is the document-store column for to add the field to
+        # * +field_name+ - second argument is the name of the field
+        # * +field_opts+ - third argument (optional) is a hash of additional field options (type, default, etc.)
+        def declare_document_field(*args)
+          column_name = args.shift; raise NoColumnNameSpecified unless column_name
+          field_name = args.shift;  raise NoFieldNameSpecified unless field_name
+          field_opts = args.shift || Hash.new
+          puts "DOCUMENT_FIELDS:  declare_document_field invoked for \"#{column_name}\" column with \"#{field_name}\" field"
           self.send("document_fields").send("<<", field_name)
+          
           define_method(field_name) do
-            puts "DOCUMENT_FIELDS:  accessor invoked for \"#{field_name}\""
-            document_body = self.send(document_column_name) || Hash.new
+            puts "DOCUMENT_FIELDS:  accessor invoked for field:#{field_name} on column:#{column_name}"
+            document_body = self.send(column_name) || Hash.new
             document_body[field_name]
           end
           define_method("#{field_name}=") do |val|
-            puts "DOCUMENT_FIELDS:  updater invoked for \"#{field_name}\""
-            document_body = self.send(document_column_name) || Hash.new
+            puts "DOCUMENT_FIELDS:  updater invoked for field:#{field_name}"
+            document_body = self.send(column_name) || Hash.new
             document_body[field_name] = val
-            self.send("#{document_column_name}=", document_body)
+            self.send("#{column_name}=", document_body)
           end
         end
         
@@ -114,6 +130,11 @@ module Awexome
       
       
       module InstanceMethods
+        
+        def perform_index_find(index_table_name)
+          table
+        end
+        
       end #InstanceMethods
       
       
